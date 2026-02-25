@@ -1,3 +1,8 @@
+# To not fill up repo 
+
+*.AppImage
+*.bc25
+
 ###### GRADLE ######
 
 .gradle
