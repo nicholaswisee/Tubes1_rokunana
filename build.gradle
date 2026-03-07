@@ -90,7 +90,7 @@ static String[] getVersionsFromWeb(boolean onSaturn) {
       System.out.println(ex.toString())
     }
   }
-  return new String[]{engineVersion, clientVersion}
+  return [engineVersion, clientVersion] as String[]
 }
 
 task version {
