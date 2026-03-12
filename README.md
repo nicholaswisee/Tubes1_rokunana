@@ -1,35 +1,58 @@
-# Battlecode 2025 Scaffold - Java
+# Tubes 1 rokunana 
 
-This is the Battlecode 2025 Java scaffold, containing an `examplefuncsplayer`. Read https://play.battlecode.org/bc25java/quick_start !
+## Daftar Isi
+- [Deskripsi Tugas Besar](#deskripsi-tugas-besar)
+- [Penjelasan Singkat Algoritma](#penjelasan-singkat-algoritma)
+- [Struktur Project](#struktur-project)
+- [Getting Started](#getting-started)
+- [Cara Menjalankan Program](#cara-menjalankan-program)
+- [How to Develop](#how-to-develop)
+- [Kontributor](#kontributor)
+
+## Deskripsi Tugas Besar
+Tugas Besar 1 Strategi Algoritma bertujuan untuk mengimplementasikan algoritma greedy pada bot permainan Battlecode 2025 dengan strategi yang dirancang untuk memperoleh skor setinggi mungkin pada akhir pertempuran. Setiap kelompok membuat tiga buah bot, yaitu bot utama, bot alternatif 1, dan bot alternatif 2, dalam bahasa Java 🤖
+
+## Penjelasan Singkat Algoritma
+Algoritma greedy adalah algoritma yang digunakan untuk memecahkan persoalan optimasi secara step-by-step sedemikian sehingga pada setiap langkah diambil pilihan yang optimal secara lokal tanpa memperhatikan konsekuensi pada langkah ke depannya.
+1. Bot utama
+
+2. Bot alternatif 1
+
+3. Bot alternatif 2
 
 
-### Project Structure
+### Struktur Project
+```
+Tubes1_rokunana
+├───.gradle
+├───artifacts\
+├───build\
+├───client\
+├───gradle\
+├───matches\
+├───resource\
+├───src\
+│   ├───mainbot
+│   ├───alternativebot1
+│   └───alternativebot2
+├───test\
+├───.gitignore
+├───build.gradle
+├───client_version.txt
+├───engine_version.txt
+├───gradle.properties
+├───gradlew
+├───gradlew.bat
+└───README.md
+```
 
-- `README.md`
-    This file.
-- `build.gradle`
-    The Gradle build file used to build and run players.
-- `src/`
-    Player source code.
-- `test/`
-    Player test code.
-- `client/`
-    Contains the client. The proper executable can be found in this folder (don't move this!)
-- `build/`
-    Contains compiled player code and other artifacts of the build process. Can be safely ignored.
-- `matches/`
-    The output folder for match files.
-- `maps/`
-    The default folder for custom maps.
-- `gradlew`, `gradlew.bat`
-    The Unix (OS X/Linux) and Windows versions, respectively, of the Gradle wrapper. These are nifty scripts that you can execute in a terminal to run the Gradle build tasks of this project. If you aren't planning to do command line development, these can be safely ignored.
-- `gradle/`
-    Contains files used by the Gradle wrapper scripts. Can be safely ignored.
+### Getting started
 
-### How to get started
 
 You are free to directly edit `examplefuncsplayer`.
 However, we recommend you make a new bot by copying `examplefuncsplayer` to a new package under the `src` folder.
+
+## Cara Menjalankan Program
 
 ### Useful Commands
 
@@ -51,3 +74,10 @@ Look at `gradle.properties` for project-wide configuration.
 
 If you are having any problems with the default client, please report to teh devs and
 feel free to set the `compatibilityClient` configuration to `true` to download a different version of the client.
+
+## Kontributor
+| NIM      | Nama                           |
+|:---------|:-------------------------------|
+| 13524037 | Nicholas Wise Saragih Sumbayak | 
+| 13524065 | Kurt Mikhael Purba             |
+| 13524089 | Aurelia Jennifer Gunawan       |
