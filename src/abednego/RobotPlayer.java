@@ -12,6 +12,10 @@ public class RobotPlayer {
     static MapLocation lastPos = null;
     static int stuckCount = 0;
 
+    static final MapLocation[] sBufLocs = new MapLocation[100];
+    static final int[] sBufWeights = new int[100];
+    static final MapLocation[] sCandidates = new MapLocation[25];
+
     static final Direction[] directions = {
             Direction.NORTH,
             Direction.NORTHEAST,
@@ -22,7 +26,6 @@ public class RobotPlayer {
             Direction.WEST,
             Direction.NORTHWEST,
     };
-
     static final Direction[] mopperDirections = {
             Direction.NORTH,
             Direction.EAST,
@@ -34,20 +37,26 @@ public class RobotPlayer {
     public static void run(RobotController rc) throws GameActionException {
         exploreDir = directions[rc.getID() % directions.length];
         while (true) {
-            turnCount += 1;
+            turnCount++;
             try {
                 switch (rc.getType()) {
-                    case SOLDIER:  runSoldier(rc);  break;
-                    case MOPPER:   runMopper(rc);   break;
-                    case SPLASHER: runSplasher(rc); break;
-                    default:       runTower(rc);    break;
+                    case SOLDIER:
+                        runSoldier(rc);
+                        break;
+                    case MOPPER:
+                        runMopper(rc);
+                        break;
+                    case SPLASHER:
+                        runSplasher(rc);
+                        break;
+                    default:
+                        runTower(rc);
+                        break;
                 }
             } catch (GameActionException e) {
-                System.out.println("GameActionException");
-                e.printStackTrace();
+                System.out.println("GameActionException"); e.printStackTrace();
             } catch (Exception e) {
-                System.out.println("Exception");
-                e.printStackTrace();
+                System.out.println("Exception"); e.printStackTrace();
             } finally {
                 Clock.yield();
             }
@@ -56,29 +65,28 @@ public class RobotPlayer {
 
     public static void runTower(RobotController rc) throws GameActionException {
         RobotInfo[] nearbyEnemies = rc.senseNearbyRobots(-1, rc.getTeam().opponent());
-        if (nearbyEnemies.length > 0) {
-            if (rc.canAttack(nearbyEnemies[0].location)) {
-                rc.attack(nearbyEnemies[0].location);
-            }
+        if (nearbyEnemies.length > 0 && rc.canAttack(nearbyEnemies[0].location)) {
+            rc.attack(nearbyEnemies[0].location);
         }
 
         MapInfo[] nearbyTiles = rc.senseNearbyMapInfos();
-        int enemyTileCount = 0;
-        int neutralTileCount = 0;
-        for (MapInfo tile : nearbyTiles) {
-            PaintType paint = tile.getPaint();
+        int n = nearbyTiles.length;
+        int enemyTileCount = 0, neutralTileCount = 0;
+        for (int i = 0; i < n; i++) {
+            PaintType paint = nearbyTiles[i].getPaint();
             if (paint.isEnemy()) { enemyTileCount++; }
             else if (paint == PaintType.EMPTY) { neutralTileCount++; }
         }
 
         UnitType typeToBuild;
-        if (enemyTileCount > 2) { typeToBuild = UnitType.MOPPER; }
+        if (enemyTileCount > 2) { typeToBuild = UnitType.MOPPER;   }
         else if (neutralTileCount > 3) { typeToBuild = UnitType.SPLASHER; }
-        else { typeToBuild = UnitType.SOLDIER; }
+        else { typeToBuild = UnitType.SOLDIER;  }
 
+        MapLocation myLoc = rc.getLocation();
         boolean spawned = false;
-        for (Direction dir : directions) {
-            MapLocation spawnLoc = rc.getLocation().add(dir);
+        for (int d = 0; d < 8; d++) {
+            MapLocation spawnLoc = myLoc.add(directions[d]);
             if (rc.canBuildRobot(typeToBuild, spawnLoc)) {
                 rc.buildRobot(typeToBuild, spawnLoc);
                 spawned = true;
@@ -86,8 +94,8 @@ public class RobotPlayer {
             }
         }
         if (!spawned && typeToBuild != UnitType.SOLDIER) {
-            for (Direction dir : directions) {
-                MapLocation spawnLoc = rc.getLocation().add(dir);
+            for (int d = 0; d < 8; d++) {
+                MapLocation spawnLoc = myLoc.add(directions[d]);
                 if (rc.canBuildRobot(UnitType.SOLDIER, spawnLoc)) {
                     rc.buildRobot(UnitType.SOLDIER, spawnLoc);
                     break;
@@ -99,13 +107,16 @@ public class RobotPlayer {
     public static void runSoldier(RobotController rc) throws GameActionException {
         MapLocation myLoc = rc.getLocation();
         MapInfo[] nearbyTiles = rc.senseNearbyMapInfos();
+        int nTiles = nearbyTiles.length;
+
+        RobotInfo[] allies = rc.senseNearbyRobots(-1, rc.getTeam());
 
         MapLocation targetRuin = null;
-        for (MapInfo tile : nearbyTiles) {
+        for (int i = 0; i < nTiles; i++) {
+            MapInfo tile = nearbyTiles[i];
             if (tile.hasRuin()) {
                 MapLocation ruinLoc = tile.getMapLocation();
-                RobotInfo ruinOccupant = rc.senseRobotAtLocation(ruinLoc);
-                if (ruinOccupant == null) {
+                if (rc.senseRobotAtLocation(ruinLoc) == null) {
                     targetRuin = ruinLoc;
                     break;
                 }
@@ -115,69 +126,63 @@ public class RobotPlayer {
         if (targetRuin != null) {
             if (currentTargetRuin == null || !currentTargetRuin.equals(targetRuin)) {
                 currentTargetRuin = targetRuin;
-                currentTowerType = decideTowerType(rc);
+                currentTowerType = decideTowerType(rc, allies);
             }
-            UnitType towerTypeToBuild = currentTowerType;
+            UnitType towerType = currentTowerType;
 
-            if (rc.canMarkTowerPattern(towerTypeToBuild, targetRuin)) {
-                rc.markTowerPattern(towerTypeToBuild, targetRuin);
+            if (rc.canMarkTowerPattern(towerType, targetRuin)) {
+                rc.markTowerPattern(towerType, targetRuin);
             }
 
             if (rc.isActionReady()) {
-                for (MapInfo patternTile : rc.senseNearbyMapInfos(targetRuin, 8)) {
-                    if (patternTile.getMark() != PaintType.EMPTY && patternTile.getMark() != patternTile.getPaint()) {
-                        boolean useSecondary = (patternTile.getMark() == PaintType.ALLY_SECONDARY);
-                        if (rc.canAttack(patternTile.getMapLocation())) {
-                            rc.attack(patternTile.getMapLocation(), useSecondary);
+                for (int i = 0; i < nTiles; i++) {
+                    MapInfo pt = nearbyTiles[i];
+                    PaintType mark = pt.getMark();
+                    if (mark != PaintType.EMPTY && mark != pt.getPaint()) {
+                        MapLocation ptLoc = pt.getMapLocation();
+                        if (rc.canAttack(ptLoc)) {
+                            rc.attack(ptLoc, mark == PaintType.ALLY_SECONDARY);
                             break;
                         }
                     }
                 }
             }
 
-            if (rc.canCompleteTowerPattern(towerTypeToBuild, targetRuin)) {
-                rc.completeTowerPattern(towerTypeToBuild, targetRuin);
+            if (rc.canCompleteTowerPattern(towerType, targetRuin)) {
+                rc.completeTowerPattern(towerType, targetRuin);
                 currentTargetRuin = null;
-                currentTowerType = null;
+                currentTowerType  = null;
             }
 
-            tryUpgradeTower(rc);
+            tryUpgradeTower(rc, allies);
 
             if (rc.isMovementReady()) {
-                Direction dirToRuin = myLoc.directionTo(targetRuin);
-                if (rc.canMove(dirToRuin)) {
-                    rc.move(dirToRuin);
-                } else {
-                    Direction left = dirToRuin.rotateLeft();
-                    Direction right = dirToRuin.rotateRight();
-                    if (rc.canMove(left)) { rc.move(left); }
-                    else if (rc.canMove(right)) { rc.move(right); }
-                }
+                Direction dir = myLoc.directionTo(targetRuin);
+                if (rc.canMove(dir)) { rc.move(dir); }
+                else if (rc.canMove(dir.rotateLeft())) { rc.move(dir.rotateLeft()); }
+                else if (rc.canMove(dir.rotateRight())) { rc.move(dir.rotateRight()); }
             }
             return;
         }
 
-        tryUpgradeTower(rc);
+        tryUpgradeTower(rc, allies);
 
         if (rc.getPaint() < 40) {
-            RobotInfo[] allies = rc.senseNearbyRobots(-1, rc.getTeam());
             RobotInfo nearestTower = null;
             int bestDist = Integer.MAX_VALUE;
-            for (RobotInfo ally : allies) {
+            for (int i = 0; i < allies.length; i++) {
+                RobotInfo ally = allies[i];
                 if (ally.type.isTowerType() && ally.paintAmount > 0) {
                     int d = myLoc.distanceSquaredTo(ally.location);
-                    if (d < bestDist) {
-                        bestDist = d;
-                        nearestTower = ally;
-                    }
+                    if (d < bestDist) { bestDist = d; nearestTower = ally; }
                 }
             }
             if (nearestTower != null) {
                 if (rc.isMovementReady()) {
-                    Direction dirToTower = myLoc.directionTo(nearestTower.location);
-                    if (rc.canMove(dirToTower)) { rc.move(dirToTower);}
-                    else if (rc.canMove(dirToTower.rotateLeft())) { rc.move(dirToTower.rotateLeft());}
-                    else if (rc.canMove(dirToTower.rotateRight())) { rc.move(dirToTower.rotateRight());}
+                    Direction dir = myLoc.directionTo(nearestTower.location);
+                    if (rc.canMove(dir)) { rc.move(dir); }
+                    else if (rc.canMove(dir.rotateLeft())) { rc.move(dir.rotateLeft()); }
+                    else if (rc.canMove(dir.rotateRight())) { rc.move(dir.rotateRight()); }
                 }
                 if (rc.isActionReady()) {
                     int toTake = rc.getType().paintCapacity - rc.getPaint();
@@ -189,64 +194,60 @@ public class RobotPlayer {
             }
         }
 
-        if (rc.isActionReady()) {
-            MapInfo bestEnemyTile   = null;
-            MapInfo bestNeutralTile = null;
+        int bufCount = 0;
+        for (int i = 0; i < nTiles; i++) {
+            MapInfo   tile  = nearbyTiles[i];
+            PaintType paint = tile.getPaint();
+            if (paint.isAlly()) continue;
+            sBufLocs[bufCount] = tile.getMapLocation();
+            sBufWeights[bufCount] = paint.isEnemy() ? 2 : 1;
+            bufCount++;
+        }
 
-            for (MapInfo tile : nearbyTiles) {
-                if (!rc.canAttack(tile.getMapLocation())) { continue;}
-                PaintType paint = tile.getPaint();
-                if (paint.isEnemy() && bestEnemyTile == null) {
-                    bestEnemyTile = tile;
-                } else if (paint == PaintType.EMPTY && bestNeutralTile == null) {
-                    bestNeutralTile = tile;
+        if (rc.isActionReady()) {
+            MapLocation bestEnemyLoc = null, bestNeutralLoc = null;
+            for (int i = 0; i < bufCount; i++) {
+                MapLocation loc = sBufLocs[i];
+                if (!rc.canAttack(loc)) continue;
+                int w = sBufWeights[i];
+                if (w == 2 && bestEnemyLoc == null) {
+                    bestEnemyLoc = loc;
+                    if (bestNeutralLoc != null) break;
+                } else if (w == 1 && bestNeutralLoc == null) {
+                    bestNeutralLoc = loc;
+                    if (bestEnemyLoc != null) break;
                 }
             }
-
-            if (bestEnemyTile != null) {
-                rc.attack(bestEnemyTile.getMapLocation());
-            } else if (bestNeutralTile != null) {
-                rc.attack(bestNeutralTile.getMapLocation());
-            } else if (rc.canAttack(myLoc)) {
-                MapInfo currentTile = rc.senseMapInfo(myLoc);
-                if (!currentTile.getPaint().isAlly()) {
-                    rc.attack(myLoc);
-                }
+            if (bestEnemyLoc != null) { rc.attack(bestEnemyLoc); }
+            else if (bestNeutralLoc != null) { rc.attack(bestNeutralLoc); }
+            else if (rc.canAttack(myLoc) && !rc.senseMapInfo(myLoc).getPaint().isAlly()) {
+                rc.attack(myLoc);
             }
         }
 
         if (rc.isMovementReady()) {
-            Direction bestDir = null;
+            Direction bestDir   = null;
             int bestScore = 0;
-
-            for (Direction dir : directions) {
+            for (int d = 0; d < 8; d++) {
+                Direction dir = directions[d];
                 if (!rc.canMove(dir)) continue;
                 MapLocation nextLoc = myLoc.add(dir);
                 int score = 0;
-                for (MapInfo tile : nearbyTiles) {
-                    PaintType paint = tile.getPaint();
-                    if (paint.isAlly()) { continue; }
-                    int dist = tile.getMapLocation().distanceSquaredTo(nextLoc);
-                    if (dist <= 3) { score += getDeltaScore(paint); }
+                for (int i = 0; i < bufCount; i++) {
+                    if (sBufLocs[i].distanceSquaredTo(nextLoc) <= 3) {
+                        score += sBufWeights[i];
+                    }
                 }
                 score += rng.nextInt(3);
-                if (score > bestScore) {
-                    bestScore = score;
-                    bestDir   = dir;
-                }
+                if (score > bestScore) { bestScore = score; bestDir = dir; }
             }
-
-            if (bestDir != null) {
-                rc.move(bestDir);
-            } else {
-                explore(rc);
-            }
+            if (bestDir != null) { rc.move(bestDir); }
+            else { explore(rc); }
         }
 
         if (rc.isActionReady()) {
             MapLocation curLoc = rc.getLocation();
-            MapInfo currentTile = rc.senseMapInfo(curLoc);
-            if (!currentTile.getPaint().isAlly() && rc.canAttack(curLoc)) {
+            if (rc.canAttack(curLoc) && !rc.senseMapInfo(curLoc).getPaint().isAlly()) {
                 rc.attack(curLoc);
             }
         }
@@ -257,7 +258,8 @@ public class RobotPlayer {
 
         if (rc.getPaint() < 20) {
             RobotInfo[] allies = rc.senseNearbyRobots(-1, rc.getTeam());
-            for (RobotInfo ally : allies) {
+            for (int i = 0; i < allies.length; i++) {
+                RobotInfo ally = allies[i];
                 if (ally.type.isTowerType() && ally.paintAmount > 0) {
                     if (rc.isMovementReady()) {
                         Direction d = myLoc.directionTo(ally.location);
@@ -281,26 +283,22 @@ public class RobotPlayer {
         if (enemies.length > 0) {
             RobotInfo richestEnemy = null;
             int maxPaint = -1;
-            for (RobotInfo enemy : enemies) {
-                if (enemy.paintAmount > maxPaint) {
-                    maxPaint = enemy.paintAmount;
-                    richestEnemy = enemy;
+            for (int i = 0; i < enemies.length; i++) {
+                if (enemies[i].paintAmount > maxPaint) {
+                    maxPaint = enemies[i].paintAmount;
+                    richestEnemy = enemies[i];
                 }
             }
 
             if (rc.isActionReady()) {
                 Direction bestSwingDir = null;
                 int bestSwingPaint = 0;
-
-                for (Direction mopDir : mopperDirections) {
+                for (int i = 0; i < 4; i++) {
+                    Direction mopDir = mopperDirections[i];
                     if (!rc.canMopSwing(mopDir)) continue;
-                    int totalPaint = simSwingPaint(rc, myLoc, mopDir, enemies);
-                    if (totalPaint > bestSwingPaint) {
-                        bestSwingPaint = totalPaint;
-                        bestSwingDir = mopDir;
-                    }
+                    int tp = simSwingPaint(myLoc, mopDir, enemies);
+                    if (tp > bestSwingPaint) { bestSwingPaint = tp; bestSwingDir = mopDir; }
                 }
-
                 if (bestSwingDir != null && bestSwingPaint > 0) {
                     rc.mopSwing(bestSwingDir);
                 } else if (richestEnemy != null && rc.canAttack(richestEnemy.location)) {
@@ -309,43 +307,34 @@ public class RobotPlayer {
             }
 
             if (rc.isMovementReady() && richestEnemy != null) {
-                Direction dirToEnemy = myLoc.directionTo(richestEnemy.location);
-                if (rc.canMove(dirToEnemy)) {
-                    rc.move(dirToEnemy);
-                } else {
-                    Direction left = dirToEnemy.rotateLeft();
-                    Direction right = dirToEnemy.rotateRight();
-                    if (rc.canMove(left)) { rc.move(left); }
-                    else if (rc.canMove(right)) { rc.move(right); }
-                }
+                Direction dir = myLoc.directionTo(richestEnemy.location);
+                if (rc.canMove(dir)) { rc.move(dir); }
+                else if (rc.canMove(dir.rotateLeft())) { rc.move(dir.rotateLeft()); }
+                else if (rc.canMove(dir.rotateRight())) { rc.move(dir.rotateRight()); }
             }
 
         } else {
             if (rc.isMovementReady()) {
+                MapInfo[] nearbyTiles = rc.senseNearbyMapInfos();
+                int nTiles = nearbyTiles.length;
                 Direction bestDir = null;
                 int bestCount = -1;
-
-                for (Direction dir : directions) {
+                for (int d = 0; d < 8; d++) {
+                    Direction dir = directions[d];
                     if (!rc.canMove(dir)) continue;
                     MapLocation nextLoc = myLoc.add(dir);
                     int count = 0;
-                    for (MapInfo tile : rc.senseNearbyMapInfos()) {
-                        if (tile.getPaint().isEnemy()) {
-                            if (tile.getMapLocation().distanceSquaredTo(nextLoc) <= 8) { count++; }
+                    for (int i = 0; i < nTiles; i++) {
+                        MapInfo tile = nearbyTiles[i];
+                        if (tile.getPaint().isEnemy() && tile.getMapLocation().distanceSquaredTo(nextLoc) <= 8) {
+                            count++;
                         }
                     }
-                    count += rng.nextInt(2); // tiebreaker acak
-                    if (count > bestCount) {
-                        bestCount = count;
-                        bestDir = dir;
-                    }
+                    count += rng.nextInt(2);
+                    if (count > bestCount) { bestCount = count; bestDir = dir; }
                 }
-
-                if (bestDir != null) {
-                    rc.move(bestDir);
-                } else {
-                    explore(rc);
-                }
+                if (bestDir != null) { rc.move(bestDir); }
+                else { explore(rc); }
             }
         }
     }
@@ -357,21 +346,19 @@ public class RobotPlayer {
             RobotInfo[] allies = rc.senseNearbyRobots(-1, rc.getTeam());
             RobotInfo nearestTower = null;
             int bestDist = Integer.MAX_VALUE;
-            for (RobotInfo ally : allies) {
+            for (int i = 0; i < allies.length; i++) {
+                RobotInfo ally = allies[i];
                 if (ally.type.isTowerType() && ally.paintAmount > 0) {
                     int d = myLoc.distanceSquaredTo(ally.location);
-                    if (d < bestDist) {
-                        bestDist = d;
-                        nearestTower = ally;
-                    }
+                    if (d < bestDist) { bestDist = d; nearestTower = ally; }
                 }
             }
             if (nearestTower != null) {
                 if (rc.isMovementReady()) {
-                    Direction dirToTower = myLoc.directionTo(nearestTower.location);
-                    if (rc.canMove(dirToTower)) { rc.move(dirToTower); }
-                    else if (rc.canMove(dirToTower.rotateLeft())) { rc.move(dirToTower.rotateLeft()); }
-                    else if (rc.canMove(dirToTower.rotateRight())) { rc.move(dirToTower.rotateRight()); }
+                    Direction dir = myLoc.directionTo(nearestTower.location);
+                    if (rc.canMove(dir)) { rc.move(dir); }
+                    else if (rc.canMove(dir.rotateLeft())) { rc.move(dir.rotateLeft()); }
+                    else if (rc.canMove(dir.rotateRight())) { rc.move(dir.rotateRight()); }
                 }
                 if (rc.isActionReady()) {
                     int toTake = rc.getType().paintCapacity - rc.getPaint();
@@ -383,87 +370,83 @@ public class RobotPlayer {
             }
         }
 
+        MapInfo[] allTiles = rc.senseNearbyMapInfos();
+        int nTiles = allTiles.length;
+        int bufCount = 0, candidateCount = 0;
+        for (int i = 0; i < nTiles; i++) {
+            MapInfo tile = allTiles[i];
+            MapLocation loc = tile.getMapLocation();
+            PaintType paint = tile.getPaint();
+            if (!paint.isAlly()) {
+                sBufLocs[bufCount] = loc;
+                sBufWeights[bufCount] = paint.isEnemy() ? 2 : 1;
+                bufCount++;
+            }
+            if (myLoc.distanceSquaredTo(loc) <= 4) {
+                sCandidates[candidateCount++] = loc;
+            }
+        }
+
         if (rc.isActionReady()) {
             MapLocation bestCenter = null;
-            int bestScore = 1;
-
-            for (MapInfo candidate : rc.senseNearbyMapInfos(2)) {
-                MapLocation centerLoc = candidate.getMapLocation();
-                if (!rc.canAttack(centerLoc)) { continue; }
-
+            int bestScore  = 1;
+            for (int ci = 0; ci < candidateCount; ci++) {
+                MapLocation centerLoc = sCandidates[ci];
+                if (!rc.canAttack(centerLoc)) continue;
                 int score = 0;
-                for (MapInfo splashTile : rc.senseNearbyMapInfos(centerLoc, 2)) {
-                    PaintType paint = splashTile.getPaint();
-                    if (paint.isEnemy()) { score += 2; }
-                    else if (paint == PaintType.EMPTY) { score += 1; }
+                for (int i = 0; i < bufCount; i++) {
+                    if (sBufLocs[i].distanceSquaredTo(centerLoc) <= 2) {
+                        score += sBufWeights[i];
+                    }
                 }
-
-                if (score > bestScore) {
-                    bestScore = score;
-                    bestCenter = centerLoc;
-                }
+                if (score > bestScore) { bestScore = score; bestCenter = centerLoc; }
             }
-
-            if (bestCenter != null) {
-                rc.attack(bestCenter);
-            }
+            if (bestCenter != null) { rc.attack(bestCenter); }
         }
 
         if (rc.isMovementReady()) {
             Direction bestDir = null;
             int bestDensity = -1;
-            MapInfo[] allTiles = rc.senseNearbyMapInfos();
-
-            for (Direction dir : directions) {
-                if (!rc.canMove(dir)) { continue; }
+            for (int d = 0; d < 8; d++) {
+                Direction dir = directions[d];
+                if (!rc.canMove(dir)) continue;
                 MapLocation nextLoc = myLoc.add(dir);
                 int density = 0;
-                for (MapInfo tile : allTiles) {
-                    if (tile.getPaint().isAlly()) { continue; }
-                    if (tile.getMapLocation().distanceSquaredTo(nextLoc) <= 16) {
-                        PaintType paint = tile.getPaint();
-                        if (paint.isEnemy()) { density += 2; }
-                        else if (paint == PaintType.EMPTY) { density += 1; }
+                for (int i = 0; i < bufCount; i++) {
+                    if (sBufLocs[i].distanceSquaredTo(nextLoc) <= 16) {
+                        density += sBufWeights[i];
                     }
                 }
                 density += rng.nextInt(2);
-                if (density > bestDensity) {
-                    bestDensity = density;
-                    bestDir = dir;
-                }
+                if (density > bestDensity) { bestDensity = density; bestDir = dir; }
             }
-
             if (bestDir != null) { rc.move(bestDir); }
-            else { explore(rc); }
+            else                 { explore(rc); }
         }
     }
 
-    static UnitType decideTowerType(RobotController rc) throws GameActionException {
-        int chips = rc.getChips();
 
-        RobotInfo[] allies = rc.senseNearbyRobots(-1, rc.getTeam());
-        int totalTowerPaint = 0;
-        int paintTowers = 0;
-        int moneyTowers = 0;
-        for (RobotInfo ally : allies) {
-            UnitType t = ally.type;
-            if (t == UnitType.LEVEL_ONE_PAINT_TOWER || t == UnitType.LEVEL_TWO_PAINT_TOWER || t == UnitType.LEVEL_THREE_PAINT_TOWER) {
+    static UnitType decideTowerType(RobotController rc, RobotInfo[] allies) throws GameActionException {
+        int chips = rc.getChips();
+        int totalTowerPaint = 0, paintTowers = 0, moneyTowers = 0;
+        for (int i = 0; i < allies.length; i++) {
+            UnitType t = allies[i].type;
+            if (t == UnitType.LEVEL_ONE_PAINT_TOWER || t == UnitType.LEVEL_TWO_PAINT_TOWER  || t == UnitType.LEVEL_THREE_PAINT_TOWER) {
                 paintTowers++;
-                totalTowerPaint += ally.paintAmount;
-            } else if (t == UnitType.LEVEL_ONE_MONEY_TOWER || t == UnitType.LEVEL_TWO_MONEY_TOWER || t == UnitType.LEVEL_THREE_MONEY_TOWER) {
+                totalTowerPaint += allies[i].paintAmount;
+            } else if (t == UnitType.LEVEL_ONE_MONEY_TOWER || t == UnitType.LEVEL_TWO_MONEY_TOWER  || t == UnitType.LEVEL_THREE_MONEY_TOWER) {
                 moneyTowers++;
             }
         }
-
-        if (chips < 300) { return UnitType.LEVEL_ONE_MONEY_TOWER; }
-        if (paintTowers == 0) { return UnitType.LEVEL_ONE_PAINT_TOWER; }
-        if (totalTowerPaint < 100 && paintTowers <= moneyTowers) { return UnitType.LEVEL_ONE_PAINT_TOWER; }
+        if (chips < 300) return UnitType.LEVEL_ONE_MONEY_TOWER;
+        if (paintTowers == 0) return UnitType.LEVEL_ONE_PAINT_TOWER;
+        if (totalTowerPaint < 100 && paintTowers <= moneyTowers) return UnitType.LEVEL_ONE_PAINT_TOWER;
         return UnitType.LEVEL_ONE_MONEY_TOWER;
     }
 
-    static void tryUpgradeTower(RobotController rc) throws GameActionException {
-        RobotInfo[] allies = rc.senseNearbyRobots(-1, rc.getTeam());
-        for (RobotInfo ally : allies) {
+    static void tryUpgradeTower(RobotController rc, RobotInfo[] allies) throws GameActionException {
+        for (int i = 0; i < allies.length; i++) {
+            RobotInfo ally = allies[i];
             if (ally.type.isTowerType() && rc.canUpgradeTower(ally.location)) {
                 rc.upgradeTower(ally.location);
                 return;
@@ -473,10 +456,8 @@ public class RobotPlayer {
 
     static void explore(RobotController rc) throws GameActionException {
         MapLocation myLoc = rc.getLocation();
-
         if (myLoc.equals(lastPos)) {
-            stuckCount++;
-            if (stuckCount >= 3) {
+            if (++stuckCount >= 3) {
                 exploreDir = directions[rng.nextInt(directions.length)];
                 stuckCount = 0;
             }
@@ -485,62 +466,35 @@ public class RobotPlayer {
         }
         lastPos = myLoc;
 
-        if (rc.canMove(exploreDir)) {
-            rc.move(exploreDir);
-            return;
-        }
+        if (rc.canMove(exploreDir)) { rc.move(exploreDir); return; }
 
         Direction orig = exploreDir;
         for (int i = 0; i < 4; i++) {
             exploreDir = exploreDir.rotateRight();
-            if (rc.canMove(exploreDir)) {
-                rc.move(exploreDir);
-                return;
-            }
+            if (rc.canMove(exploreDir)) { rc.move(exploreDir); return; }
         }
         exploreDir = orig;
         for (int i = 0; i < 4; i++) {
             exploreDir = exploreDir.rotateLeft();
-            if (rc.canMove(exploreDir)) {
-                rc.move(exploreDir);
-                return;
-            }
+            if (rc.canMove(exploreDir)) { rc.move(exploreDir); return; }
         }
         exploreDir = orig;
     }
 
-    static int getDeltaScore(PaintType paint) {
-        if (paint.isEnemy()) { return 2; }
-        else if (paint == PaintType.EMPTY) { return 1; }
-        else { return 0; }
-    }
-
-    static int simSwingPaint(RobotController rc, MapLocation origin, Direction swingDir, RobotInfo[] enemies) {
-        int totalPaint = 0;
-        MapLocation step1 = origin.add(swingDir);
-        MapLocation step2 = step1.add(swingDir);
-
-        MapLocation[] step1Targets = {
-                step1,
-                step1.add(swingDir.rotateLeft()),
-                step1.add(swingDir.rotateRight())
-        };
-
-        MapLocation[] step2Targets = {
-                step2,
-                step2.add(swingDir.rotateLeft()),
-                step2.add(swingDir.rotateRight())
-        };
-
-        for (RobotInfo enemy : enemies) {
-            MapLocation eLoc = enemy.location;
-            for (MapLocation t : step1Targets) {
-                if (eLoc.equals(t)) { totalPaint += enemy.paintAmount; break; }
-            }
-            for (MapLocation t : step2Targets) {
-                if (eLoc.equals(t)) { totalPaint += enemy.paintAmount; break; }
+    static int simSwingPaint(MapLocation origin, Direction swingDir, RobotInfo[] enemies) {
+        MapLocation s1 = origin.add(swingDir);
+        MapLocation s2 = s1.add(swingDir);
+        Direction sl = swingDir.rotateLeft();
+        Direction sr = swingDir.rotateRight();
+        MapLocation s1l = s1.add(sl), s1r = s1.add(sr);
+        MapLocation s2l = s2.add(sl), s2r = s2.add(sr);
+        int total = 0;
+        for (int i = 0; i < enemies.length; i++) {
+            MapLocation e = enemies[i].location;
+            if (e.equals(s1) || e.equals(s1l) || e.equals(s1r) || e.equals(s2) || e.equals(s2l) || e.equals(s2r)) {
+                total += enemies[i].paintAmount;
             }
         }
-        return totalPaint;
+        return total;
     }
 }
