@@ -2,6 +2,7 @@ package sukuna;
 
 import battlecode.common.*;
 import java.util.Random;
+import org.apache.lucene.search.Explanation;
 import org.hibernate.dialect.MySQLInnoDBDialect;
 
 public class RobotPlayer {
@@ -11,6 +12,9 @@ public class RobotPlayer {
     static final int SPLASHER_OPENING_ROUND = 800;
     static MapLocation currentTargetRuin = null;
     static UnitType currentTowerType = null;
+    static MapLocation lastPos = null;
+    static int stuckCount = 0;
+    static Direction exploreDir = null;
 
     static final Direction[] directions = {
         Direction.NORTH,     Direction.NORTHEAST, Direction.EAST,
@@ -294,7 +298,121 @@ public class RobotPlayer {
             return;
         }
 
-        MapLocation my = rc.getLocation();
+        MapLocation currLoc = rc.getLocation();
+
+        // determine target w/ scoring
+        MapLocation bestTarget = null;
+        int bestScore = -1;
+        boolean isEnemyUnit = false;
+
+        // fight enemy moppers
+        for (RobotInfo e : enemies) {
+            if (e.type == UnitType.MOPPER) {
+                int score = 80 - e.location.distanceSquaredTo(currLoc);
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestTarget = e.location;
+                    isEnemyUnit = true;
+                }
+            }
+        }
+
+        // delete pockets inside territory
+        for (MapInfo tile : nearby) {
+            if (!tile.getPaint().isEnemy())
+                continue;
+            MapLocation tileLoc = tile.getMapLocation();
+
+            int allyNeighbors = 0;
+            for (Direction d : directions) {
+                MapLocation neighbor = tileLoc.add(d);
+                if (rc.canSenseLocation(neighbor) &&
+                    rc.senseMapInfo(neighbor).getPaint().isAlly()) {
+                    allyNeighbors++;
+                }
+            }
+
+            int score = 0;
+            if (allyNeighbors >= 3) {
+                score = 100 + allyNeighbors * 5;
+            } else if (allyNeighbors > 0) {
+                score = 50;
+            }
+
+            // tiebreaker
+            score -= Math.max(0, tileLoc.distanceSquaredTo(currLoc));
+
+            if (score > bestScore) {
+                bestScore = score;
+                bestTarget = tileLoc;
+                isEnemyUnit = false;
+
+                if (score >= 120) // ideal score, early exit
+                    break;
+            }
+        }
+
+        if (bestTarget != null) {
+            if (rc.isMovementReady() &&
+                bestTarget.distanceSquaredTo(currLoc) > 2) {
+                moveToward(rc, bestTarget);
+            }
+            if (rc.isActionReady()) {
+                if (isEnemyUnit) {
+                    // Try to swing if adjacent, otherwise attack
+                    boolean swung = false;
+                    for (Direction d : directions) {
+                        if (currLoc.add(d).equals(bestTarget) &&
+                            rc.canMopSwing(d)) {
+                            rc.mopSwing(d);
+                            swung = true;
+                            break;
+                        }
+                    }
+                    if (!swung && rc.canAttack(bestTarget))
+                        rc.attack(bestTarget);
+                } else {
+                    // Reclaim tile
+                    if (rc.canAttack(bestTarget))
+                        rc.attack(bestTarget);
+                }
+            } else {
+                if (rc.isMovementReady())
+                    explore(rc);
+            }
+        }
+    }
+
+    static void explore(RobotController rc) throws GameActionException {
+        if (!rc.isMovementReady())
+            return;
+
+        MapLocation currLoc = rc.getLocation();
+        if (currLoc.equals(lastPos)) {
+            if (++stuckCount >= 3) {
+                exploreDir = directions[rng.nextInt(8)];
+                stuckCount = 0;
+            }
+        } else {
+            stuckCount = 0;
+        }
+
+        lastPos = currLoc;
+
+        if (rc.canMove(exploreDir)) {
+            rc.move(exploreDir);
+            return;
+        }
+
+        Direction origin = exploreDir;
+        for (int i = 0; i < 4; i++) {
+            exploreDir = exploreDir.rotateRight();
+            if (rc.canMove(exploreDir)) {
+                rc.move(exploreDir);
+                return;
+            }
+        }
+        exploreDir = origin;
     }
 
     static void runSplasher(RobotController rc, MapInfo[] nearby)
