@@ -74,77 +74,30 @@ public class RobotPlayer {
             rc.attack(weakest.location);
         }
 
-        // Spawn against enemy
-        int enemyPaintNearCount = 0;
-        for (MapInfo t : nearby) {
-            if (t.getPaint().isEnemy() &&
-                    rc.getLocation().distanceSquaredTo(t.getMapLocation()) <= 16) {
-                enemyPaintNearCount++;
-            }
-        }
-
         boolean opening = rc.getRoundNum() <= SPLASHER_OPENING_ROUND;
-        boolean enemyThreatNear = opening ? (enemyPaintNearCount >= 3) : (enemyPaintNearCount >= 2);
-
-        // spawning
-        UnitType toSpawn = UnitType.SPLASHER;
-        int roll = rng.nextInt(10);
-        if (opening) {
-            if (enemyThreatNear) {
-                if (roll < 4)
-                    toSpawn = UnitType.MOPPER;
-                else if (roll < 8)
-                    toSpawn = UnitType.SPLASHER;
-            } else {
-                if (roll < 7)
-                    toSpawn = UnitType.SPLASHER;
-                else if (roll == 9)
-                    toSpawn = UnitType.MOPPER;
-            }
-        } else {
-            if (enemyThreatNear) {
-                if (roll < 4)
-                    toSpawn = UnitType.SOLDIER;
-                else if (roll < 8)
-                    toSpawn = UnitType.MOPPER;
-                else
-                    toSpawn = UnitType.SPLASHER;
-            } else {
-                if (roll < 5)
-                    toSpawn = UnitType.SPLASHER;
-                else if (roll == 9)
-                    toSpawn = UnitType.MOPPER;
-            }
-        }
-
-        boolean canAffordSplasher = rc.getPaint() >= SPLASHER_PAINT_COST &&
-                rc.getMoney() >= SPLASHER_CHIP_COST;
-
-        if (opening && !canAffordSplasher) {
-            boolean nearSplasherBank = rc.getPaint() >= SPLASHER_BANK_PAINT &&
-                    rc.getMoney() >= SPLASHER_BANK_CHIPS;
-
-            if (enemyThreatNear) {
-                toSpawn = (roll < 5) ? UnitType.MOPPER : UnitType.SOLDIER;
-            } else if (!nearSplasherBank) {
-                if (roll < 7) {
-                    toSpawn = null;
-                } else {
-                    toSpawn = UnitType.SOLDIER;
-                }
-            }
-        }
+        RobotInfo[] allies = rc.senseNearbyRobots(-1, rc.getTeam());
+        UnitType toSpawn = SpawnUtils.decideTowerSpawn(
+                rc,
+                enemies,
+                allies,
+                nearby,
+                opening,
+                rng,
+                SPLASHER_PAINT_COST,
+                SPLASHER_CHIP_COST,
+                SPLASHER_BANK_PAINT,
+                SPLASHER_BANK_CHIPS);
 
         if (toSpawn == null) {
             // intentional no-spawn turn for splasher banking
         } else if (opening) {
             if (toSpawn == UnitType.SPLASHER) {
-                SpawnUtils.buildWithFallback(rc, UnitType.SPLASHER,
-                        UnitType.SOLDIER, UnitType.MOPPER,
+                SpawnUtils.buildWithPrimarySecondary(rc, UnitType.SPLASHER,
+                        UnitType.SOLDIER,
                         directions);
             } else if (toSpawn == UnitType.SOLDIER) {
-                SpawnUtils.buildWithFallback(rc, UnitType.SOLDIER,
-                        UnitType.SPLASHER, UnitType.MOPPER,
+                SpawnUtils.buildWithPrimarySecondary(rc, UnitType.SOLDIER,
+                        UnitType.SPLASHER,
                         directions);
             } else {
                 SpawnUtils.buildWithFallback(rc, UnitType.MOPPER,
@@ -153,12 +106,12 @@ public class RobotPlayer {
             }
         } else {
             if (toSpawn == UnitType.SPLASHER) {
-                SpawnUtils.buildWithFallback(rc, UnitType.SPLASHER,
-                        UnitType.SOLDIER, UnitType.MOPPER,
+                SpawnUtils.buildWithPrimarySecondary(rc, UnitType.SPLASHER,
+                        UnitType.SOLDIER,
                         directions);
             } else if (toSpawn == UnitType.SOLDIER) {
-                SpawnUtils.buildWithFallback(rc, UnitType.SOLDIER,
-                        UnitType.MOPPER, UnitType.SPLASHER,
+                SpawnUtils.buildWithPrimarySecondary(rc, UnitType.SOLDIER,
+                        UnitType.SPLASHER,
                         directions);
             } else {
                 SpawnUtils.buildWithFallback(rc, UnitType.MOPPER,
@@ -393,6 +346,10 @@ public class RobotPlayer {
                 if (rc.isMovementReady())
                     MovementUtils.explore(rc, directions,
                             rng);
+            }
+        } else {
+            if (rc.isMovementReady()) {
+                MovementUtils.explore(rc, directions, rng);
             }
         }
     }
