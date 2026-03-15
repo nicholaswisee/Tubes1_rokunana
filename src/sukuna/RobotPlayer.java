@@ -62,7 +62,6 @@ public class RobotPlayer {
         }
     }
 
-    // Attack weakest enemy, spam soldiers and defend with moppers
     static void runTower(RobotController rc, RobotInfo[] enemies,
                          MapInfo[] nearby) throws GameActionException {
         CommunicationUtils.towerRelayMessages(rc);
@@ -128,15 +127,12 @@ public class RobotPlayer {
 
         MapLocation currLocation = rc.getLocation();
 
-        // Ruin defense
         if (currentTargetRuin != null) {
-            // clear target if built
             if (rc.canSenseLocation(currentTargetRuin) &&
                 rc.senseRobotAtLocation(currentTargetRuin) != null) {
                 currentTargetRuin = null;
                 currentTowerType = null;
             } else {
-                // attack enemy in ruins
                 for (RobotInfo e : enemies) {
                     if (e.location.distanceSquaredTo(currentTargetRuin) <= 9 &&
                         rc.isActionReady() && rc.canAttack(e.location)) {
@@ -155,7 +151,6 @@ public class RobotPlayer {
             }
         }
 
-        // finish obviosu ruin
         if (currentTargetRuin == null) {
             MapLocation priorityRuin =
                 RuinUtils.findPriorityRuinToFinish(rc, nearby, enemies);
@@ -189,7 +184,6 @@ public class RobotPlayer {
             }
         }
 
-        // Claim ruin when safe, opportunistic if you would
         if (currentTargetRuin == null) {
             for (MapInfo tile : nearby) {
                 if (!tile.hasRuin())
@@ -223,7 +217,6 @@ public class RobotPlayer {
             }
         }
 
-        // defensive strategy defense
         boolean mustDefend = false;
         if (rc.isActionReady() && enemies.length > 0) {
             RobotInfo target = null;
@@ -277,12 +270,10 @@ public class RobotPlayer {
 
         MapLocation currLoc = rc.getLocation();
 
-        // determine target w/ scoring
         MapLocation bestTarget = null;
         int bestScore = -1;
         boolean isEnemyUnit = false;
 
-        // fight enemy moppers
         for (RobotInfo e : enemies) {
             if (e.type == UnitType.MOPPER) {
                 int score = 80 - e.location.distanceSquaredTo(currLoc);
@@ -294,7 +285,6 @@ public class RobotPlayer {
             }
         }
 
-        // delete pockets inside territory
         for (MapInfo tile : nearby) {
             if (!tile.getPaint().isEnemy())
                 continue;
@@ -316,7 +306,6 @@ public class RobotPlayer {
                 score = 50;
             }
 
-            // tiebreaker
             score -= Math.max(0, tileLoc.distanceSquaredTo(currLoc));
 
             if (score > bestScore) {
@@ -324,7 +313,7 @@ public class RobotPlayer {
                 bestTarget = tileLoc;
                 isEnemyUnit = false;
 
-                if (score >= 120) // ideal score, early exit
+                if (score >= 120)
                     break;
             }
         }
@@ -336,7 +325,6 @@ public class RobotPlayer {
             }
             if (rc.isActionReady()) {
                 if (isEnemyUnit) {
-                    // Try to swing if adjacent, otherwise attack
                     boolean swung = false;
                     for (Direction d : directions) {
                         if (currLoc.add(d).equals(bestTarget) &&
@@ -349,7 +337,6 @@ public class RobotPlayer {
                     if (!swung && rc.canAttack(bestTarget))
                         rc.attack(bestTarget);
                 } else {
-                    // Reclaim tile
                     if (rc.canAttack(bestTarget))
                         rc.attack(bestTarget);
                 }

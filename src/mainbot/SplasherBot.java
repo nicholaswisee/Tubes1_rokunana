@@ -95,7 +95,6 @@ public class SplasherBot {
                     }
                 }
 
-                // COMMS: Bias toward known enemy cluster
                 if (RobotPlayer.knownEnemyCluster != null) {
                     int currDist = myLoc.distanceSquaredTo(RobotPlayer.knownEnemyCluster);
                     int newDist = nextLoc.distanceSquaredTo(RobotPlayer.knownEnemyCluster);

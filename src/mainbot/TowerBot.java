@@ -32,7 +32,6 @@ public class TowerBot {
             else if (paint == PaintType.EMPTY) neutralTileCount++;
         }
 
-        // Smart spawn based on communication intel
         UnitType toSpawn;
         if (!RobotPlayer.faseLateGame) {
             if (RobotPlayer.needMopperLocation != null && enemyTileCount > 0) {

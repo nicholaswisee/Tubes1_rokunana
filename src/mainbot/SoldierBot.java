@@ -88,7 +88,7 @@ public class SoldierBot {
                 rc.completeTowerPattern(towerType, targetLoc);
                 RobotPlayer.currentTargetRuin = null;
                 RobotPlayer.currentTowerBuildType = null;
-                RobotPlayer.knownRuinLocation = null; // clear communicated ruin
+                RobotPlayer.knownRuinLocation = null;
                 return;
             }
 
