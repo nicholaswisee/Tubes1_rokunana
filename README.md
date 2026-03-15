@@ -14,13 +14,16 @@ Tugas Besar 1 Strategi Algoritma bertujuan untuk mengimplementasikan algoritma g
 ## Penjelasan Singkat Algoritma
 Algoritma greedy adalah algoritma yang digunakan untuk memecahkan persoalan optimasi secara step-by-step sedemikian sehingga pada setiap langkah diambil pilihan yang optimal secara lokal tanpa memperhatikan konsekuensi pada langkah ke depannya.
 1. Bot utama
-   Bot utama menggunakan heuristik hybrid tower expansion and paint coverage. Soldier memprioritaskan pembangunan tower pada ruin terdekat secara greedy karena tower menghasilkan resource dan unit baru. Jika tidak ada ruin, robot memilih arah dengan jumlah tile belum diwarnai terbanyak untuk memperluas coverage. Informasi ruin dan musuh juga dibagikan melalui komunikasi antar robot.
+
+Bot utama menggunakan heuristik hybrid tower expansion and paint coverage. Soldier memprioritaskan pembangunan tower pada ruin terdekat secara greedy karena tower menghasilkan resource dan unit baru. Jika tidak ada ruin, robot memilih arah dengan jumlah tile belum diwarnai terbanyak untuk memperluas coverage. Informasi ruin dan musuh juga dibagikan melalui komunikasi antar robot.
 
 2. Bot alternatif 1
-   Bot alternatif 1 menerapkan heuristik greedy bertingkat yang menyeimbangkan pembangunan tower, persebaran wilayah, stabilisasi area ally, dan ekspansi paint lokal. Soldier memilih ruin yang paling aman untuk dibangun, sementara unit lain memilih aksi dengan nilai coverage lokal terbaik. Komunikasi digunakan secara minimal untuk melaporkan lokasi ruin.
+
+Bot alternatif 1 menerapkan heuristik greedy bertingkat yang menyeimbangkan pembangunan tower, persebaran wilayah, stabilisasi area ally, dan ekspansi paint lokal. Soldier memilih ruin yang paling aman untuk dibangun, sementara unit lain memilih aksi dengan nilai coverage lokal terbaik. Komunikasi digunakan secara minimal untuk melaporkan lokasi ruin.
 
 3. Bot alternatif 2
-   Bot alternatif 2 menggunakan strategi greedy maximum coverage gain. Setiap robot memilih aksi dan pergerakan yang menghasilkan peningkatan coverage terbesar berdasarkan bobot tile (musuh > netral > sekutu). Semua keputusan bersifat lokal tanpa koordinasi antar robot.
+
+Bot alternatif 2 menggunakan strategi greedy maximum coverage gain. Setiap robot memilih aksi dan pergerakan yang menghasilkan peningkatan coverage terbesar berdasarkan bobot tile (musuh > netral > sekutu). Semua keputusan bersifat lokal tanpa koordinasi antar robot.
 
 
 ### Struktur Project
