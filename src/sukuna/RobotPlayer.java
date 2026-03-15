@@ -283,6 +283,25 @@ public class RobotPlayer {
                 rc.attack(target.location);
             }
         }
+
+        if (!mustDefend && rc.isMovementReady()) {
+            Direction bestDir = SoldierHeuristicUtils.chooseDefensiveMoveDirection(
+                    rc, currLocation, directions, rng);
+            if (bestDir != null) {
+                rc.move(bestDir);
+            } else {
+                MovementUtils.explore(rc, directions,
+                        rng);
+            }
+        }
+
+        if (rc.isActionReady()) {
+            MapLocation target = SoldierHeuristicUtils.choosePaintActionTarget(rc,
+                    currLocation, directions);
+            if (target != null) {
+                rc.attack(target);
+            }
+        }
     }
 
     static void runMopper(RobotController rc, RobotInfo[] enemies,
