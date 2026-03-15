@@ -43,8 +43,7 @@ public class SpawnUtils {
         UnitType toSpawn = UnitType.SOLDIER;
         int roll = rng.nextInt(100);
 
-        // Keep splasher logic as strategic expander (opening-biased +
-        // economy-aware).
+        // Keep splasher logic as strategic expander
         if (opening) {
             toSpawn = (roll < 75) ? UnitType.SPLASHER : UnitType.SOLDIER;
         } else {
@@ -69,7 +68,7 @@ public class SpawnUtils {
             }
         }
 
-        // Affordability-aware fallback for non-opening rounds as well.
+        // Affordability-aware fallback for non-opening rounds
         if (!opening && toSpawn == UnitType.SPLASHER && !canAffordSplasher) {
             toSpawn = nearEnemySpace ? UnitType.SOLDIER : null;
         }
