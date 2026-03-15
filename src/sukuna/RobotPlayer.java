@@ -21,9 +21,9 @@ public class RobotPlayer {
     public static UnitType currentTowerType = null;
 
     public static final Direction[] directions = {
-            Direction.NORTH, Direction.NORTHEAST, Direction.EAST,
-            Direction.SOUTHEAST, Direction.SOUTH, Direction.SOUTHWEST,
-            Direction.WEST, Direction.NORTHWEST,
+        Direction.NORTH,     Direction.NORTHEAST, Direction.EAST,
+        Direction.SOUTHEAST, Direction.SOUTH,     Direction.SOUTHWEST,
+        Direction.WEST,      Direction.NORTHWEST,
     };
 
     @SuppressWarnings("unused")
@@ -31,22 +31,23 @@ public class RobotPlayer {
         while (true) {
             turnCount++;
             try {
-                RobotInfo[] enemies = rc.senseNearbyRobots(-1, rc.getTeam().opponent());
+                RobotInfo[] enemies =
+                    rc.senseNearbyRobots(-1, rc.getTeam().opponent());
                 MapInfo[] nearby = rc.senseNearbyMapInfos();
 
                 switch (rc.getType()) {
-                    case SOLDIER:
-                        runSoldier(rc, enemies, nearby);
-                        break;
-                    case MOPPER:
-                        runMopper(rc, enemies, nearby);
-                        break;
-                    case SPLASHER:
-                        runSplasher(rc, nearby);
-                        break;
-                    default:
-                        runTower(rc, enemies, nearby);
-                        break;
+                case SOLDIER:
+                    runSoldier(rc, enemies, nearby);
+                    break;
+                case MOPPER:
+                    runMopper(rc, enemies, nearby);
+                    break;
+                case SPLASHER:
+                    runSplasher(rc, nearby);
+                    break;
+                default:
+                    runTower(rc, enemies, nearby);
+                    break;
                 }
             } catch (Exception e) {
                 e.printStackTrace();
@@ -77,46 +78,34 @@ public class RobotPlayer {
         boolean opening = rc.getRoundNum() <= SPLASHER_OPENING_ROUND;
         RobotInfo[] allies = rc.senseNearbyRobots(-1, rc.getTeam());
         UnitType toSpawn = SpawnUtils.decideTowerSpawn(
-                rc,
-                enemies,
-                allies,
-                nearby,
-                opening,
-                rng,
-                SPLASHER_PAINT_COST,
-                SPLASHER_CHIP_COST,
-                SPLASHER_BANK_PAINT,
-                SPLASHER_BANK_CHIPS);
+            rc, enemies, allies, nearby, opening, rng, SPLASHER_PAINT_COST,
+            SPLASHER_CHIP_COST, SPLASHER_BANK_PAINT, SPLASHER_BANK_CHIPS);
 
         if (toSpawn == null) {
             // intentional no-spawn turn for splasher banking
         } else if (opening) {
             if (toSpawn == UnitType.SPLASHER) {
-                SpawnUtils.buildWithPrimarySecondary(rc, UnitType.SPLASHER,
-                        UnitType.SOLDIER,
-                        directions);
+                SpawnUtils.buildWithPrimarySecondary(
+                    rc, UnitType.SPLASHER, UnitType.SOLDIER, directions);
             } else if (toSpawn == UnitType.SOLDIER) {
-                SpawnUtils.buildWithPrimarySecondary(rc, UnitType.SOLDIER,
-                        UnitType.SPLASHER,
-                        directions);
+                SpawnUtils.buildWithPrimarySecondary(
+                    rc, UnitType.SOLDIER, UnitType.SPLASHER, directions);
             } else {
                 SpawnUtils.buildWithFallback(rc, UnitType.MOPPER,
-                        UnitType.SOLDIER, UnitType.SPLASHER,
-                        directions);
+                                             UnitType.SOLDIER,
+                                             UnitType.SPLASHER, directions);
             }
         } else {
             if (toSpawn == UnitType.SPLASHER) {
-                SpawnUtils.buildWithPrimarySecondary(rc, UnitType.SPLASHER,
-                        UnitType.SOLDIER,
-                        directions);
+                SpawnUtils.buildWithPrimarySecondary(
+                    rc, UnitType.SPLASHER, UnitType.SOLDIER, directions);
             } else if (toSpawn == UnitType.SOLDIER) {
-                SpawnUtils.buildWithPrimarySecondary(rc, UnitType.SOLDIER,
-                        UnitType.SPLASHER,
-                        directions);
+                SpawnUtils.buildWithPrimarySecondary(
+                    rc, UnitType.SOLDIER, UnitType.SPLASHER, directions);
             } else {
                 SpawnUtils.buildWithFallback(rc, UnitType.MOPPER,
-                        UnitType.SOLDIER, UnitType.SPLASHER,
-                        directions);
+                                             UnitType.SOLDIER,
+                                             UnitType.SPLASHER, directions);
             }
         }
 
@@ -125,7 +114,7 @@ public class RobotPlayer {
 
     // Domain Expansion souljaahhh
     static void runSoldier(RobotController rc, RobotInfo[] enemies,
-            MapInfo[] nearby) throws GameActionException {
+                           MapInfo[] nearby) throws GameActionException {
         if (rc.getPaint() < 20) {
             PaintEconomyUtils.tryRefill(rc, directions);
             return;
@@ -137,22 +126,21 @@ public class RobotPlayer {
         if (currentTargetRuin != null) {
             // clear target if built
             if (rc.canSenseLocation(currentTargetRuin) &&
-                    rc.senseRobotAtLocation(currentTargetRuin) != null) {
+                rc.senseRobotAtLocation(currentTargetRuin) != null) {
                 currentTargetRuin = null;
                 currentTowerType = null;
             } else {
                 // attack enemy in ruins
                 for (RobotInfo e : enemies) {
-                    if (e.location.distanceSquaredTo(
-                            currentTargetRuin) <= 9 &&
-                            rc.isActionReady() && rc.canAttack(e.location)) {
+                    if (e.location.distanceSquaredTo(currentTargetRuin) <= 9 &&
+                        rc.isActionReady() && rc.canAttack(e.location)) {
                         rc.attack(e.location);
                         break;
                     }
                 }
 
-                boolean completed = RuinUtils.executeBuildRoutine(rc, currentTargetRuin,
-                        currentTowerType, directions);
+                boolean completed = RuinUtils.executeBuildRoutine(
+                    rc, currentTargetRuin, currentTowerType, directions);
                 if (completed) {
                     currentTargetRuin = null;
                     currentTowerType = null;
@@ -163,13 +151,15 @@ public class RobotPlayer {
 
         // finish obviosu ruin
         if (currentTargetRuin == null) {
-            MapLocation priorityRuin = RuinUtils.findPriorityRuinToFinish(rc, nearby, enemies);
+            MapLocation priorityRuin =
+                RuinUtils.findPriorityRuinToFinish(rc, nearby, enemies);
 
             if (priorityRuin != null) {
                 currentTargetRuin = priorityRuin;
-                currentTowerType = RuinUtils.inferPreferredTowerType(rc, priorityRuin);
-                boolean completed = RuinUtils.executeBuildRoutine(rc, currentTargetRuin,
-                        currentTowerType, directions);
+                currentTowerType =
+                    RuinUtils.inferPreferredTowerType(rc, priorityRuin);
+                boolean completed = RuinUtils.executeBuildRoutine(
+                    rc, currentTargetRuin, currentTowerType, directions);
                 if (completed) {
                     currentTargetRuin = null;
                     currentTowerType = null;
@@ -201,8 +191,8 @@ public class RobotPlayer {
                 if (!contested) {
                     currentTargetRuin = ruinLoc;
                     currentTowerType = UnitType.LEVEL_ONE_MONEY_TOWER;
-                    boolean completed = RuinUtils.executeBuildRoutine(rc, currentTargetRuin,
-                            currentTowerType, directions);
+                    boolean completed = RuinUtils.executeBuildRoutine(
+                        rc, currentTargetRuin, currentTowerType, directions);
                     if (completed) {
                         currentTargetRuin = null;
                         currentTowerType = null;
@@ -238,19 +228,19 @@ public class RobotPlayer {
         }
 
         if (!mustDefend && rc.isMovementReady()) {
-            Direction bestDir = SoldierHeuristicUtils.chooseDefensiveMoveDirection(
+            Direction bestDir =
+                SoldierHeuristicUtils.chooseDefensiveMoveDirection(
                     rc, currLocation, directions, rng);
             if (bestDir != null) {
                 rc.move(bestDir);
             } else {
-                MovementUtils.explore(rc, directions,
-                        rng);
+                MovementUtils.explore(rc, directions, rng);
             }
         }
 
         if (rc.isActionReady()) {
-            MapLocation target = SoldierHeuristicUtils.choosePaintActionTarget(rc,
-                    currLocation, directions);
+            MapLocation target = SoldierHeuristicUtils.choosePaintActionTarget(
+                rc, currLocation, directions);
             if (target != null) {
                 rc.attack(target);
             }
@@ -258,7 +248,7 @@ public class RobotPlayer {
     }
 
     static void runMopper(RobotController rc, RobotInfo[] enemies,
-            MapInfo[] nearby) throws GameActionException {
+                          MapInfo[] nearby) throws GameActionException {
         if (rc.getPaint() < 20) {
             PaintEconomyUtils.tryRefill(rc, directions);
             return;
@@ -293,7 +283,7 @@ public class RobotPlayer {
             for (Direction d : directions) {
                 MapLocation neighbor = tileLoc.add(d);
                 if (rc.canSenseLocation(neighbor) &&
-                        rc.senseMapInfo(neighbor).getPaint().isAlly()) {
+                    rc.senseMapInfo(neighbor).getPaint().isAlly()) {
                     allyNeighbors++;
                 }
             }
@@ -320,7 +310,7 @@ public class RobotPlayer {
 
         if (bestTarget != null) {
             if (rc.isMovementReady() &&
-                    bestTarget.distanceSquaredTo(currLoc) > 2) {
+                bestTarget.distanceSquaredTo(currLoc) > 2) {
                 MovementUtils.moveToward(rc, bestTarget, directions);
             }
             if (rc.isActionReady()) {
@@ -329,7 +319,7 @@ public class RobotPlayer {
                     boolean swung = false;
                     for (Direction d : directions) {
                         if (currLoc.add(d).equals(bestTarget) &&
-                                rc.canMopSwing(d)) {
+                            rc.canMopSwing(d)) {
                             rc.mopSwing(d);
                             swung = true;
                             break;
@@ -344,8 +334,7 @@ public class RobotPlayer {
                 }
             } else {
                 if (rc.isMovementReady())
-                    MovementUtils.explore(rc, directions,
-                            rng);
+                    MovementUtils.explore(rc, directions, rng);
             }
         } else {
             if (rc.isMovementReady()) {
@@ -355,7 +344,7 @@ public class RobotPlayer {
     }
 
     static void runSplasher(RobotController rc, MapInfo[] nearby)
-            throws GameActionException {
+        throws GameActionException {
         if (rc.getPaint() < 60) {
             PaintEconomyUtils.tryRefill(rc, directions);
             return;
