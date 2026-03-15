@@ -9,7 +9,7 @@ public class SpawnUtils {
     UnitType[] order = { first, second, third };
     for (UnitType type : order) {
       for (Direction dir : directions) {
-        MapLocation loc = rc.getLocation().add(dir);
+        MapLocation loc = rc.adjacentLocation(dir);
         if (rc.canBuildRobot(type, loc)) {
           rc.buildRobot(type, loc);
           return;
