@@ -1,12 +1,13 @@
 package sukuna;
 
 import battlecode.common.*;
+import java.util.Random;
+import sukuna.utils.CommunicationUtils;
 import sukuna.utils.MovementUtils;
 import sukuna.utils.PaintEconomyUtils;
 import sukuna.utils.RuinUtils;
 import sukuna.utils.SoldierHeuristicUtils;
 import sukuna.utils.SpawnUtils;
-import java.util.Random;
 
 public class RobotPlayer {
     public static final Random rng = new Random(6147);
@@ -34,6 +35,10 @@ public class RobotPlayer {
                 RobotInfo[] enemies =
                     rc.senseNearbyRobots(-1, rc.getTeam().opponent());
                 MapInfo[] nearby = rc.senseNearbyMapInfos();
+                CommunicationUtils.processMessages(rc);
+                if (!rc.getType().isTowerType()) {
+                    CommunicationUtils.reportNearbyRuin(rc, nearby);
+                }
 
                 switch (rc.getType()) {
                 case SOLDIER:
@@ -59,7 +64,8 @@ public class RobotPlayer {
 
     // Attack weakest enemy, spam soldiers and defend with moppers
     static void runTower(RobotController rc, RobotInfo[] enemies,
-            MapInfo[] nearby) throws GameActionException {
+                         MapInfo[] nearby) throws GameActionException {
+        CommunicationUtils.towerRelayMessages(rc);
 
         RobotInfo weakest = null;
         int minHealth = Integer.MAX_VALUE;
@@ -163,6 +169,21 @@ public class RobotPlayer {
                 if (completed) {
                     currentTargetRuin = null;
                     currentTowerType = null;
+                }
+                return;
+            }
+
+            MapLocation sharedRuin = CommunicationUtils.getKnownSharedRuin(rc);
+            if (sharedRuin != null) {
+                currentTargetRuin = sharedRuin;
+                currentTowerType =
+                    RuinUtils.inferPreferredTowerType(rc, sharedRuin);
+                boolean completed = RuinUtils.executeBuildRoutine(
+                    rc, currentTargetRuin, currentTowerType, directions);
+                if (completed) {
+                    currentTargetRuin = null;
+                    currentTowerType = null;
+                    CommunicationUtils.clearKnownSharedRuin(sharedRuin);
                 }
                 return;
             }
