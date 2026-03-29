@@ -1,4 +1,4 @@
-package sukuna.utils;
+package alternative_bots_1.utils;
 
 import battlecode.common.*;
 

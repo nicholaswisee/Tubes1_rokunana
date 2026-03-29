@@ -1,13 +1,13 @@
-package sukuna;
+package alternative_bots_1;
 
 import battlecode.common.*;
 import java.util.Random;
-import sukuna.utils.CommunicationUtils;
-import sukuna.utils.MovementUtils;
-import sukuna.utils.PaintEconomyUtils;
-import sukuna.utils.RuinUtils;
-import sukuna.utils.SoldierHeuristicUtils;
-import sukuna.utils.SpawnUtils;
+import alternative_bots_1.utils.CommunicationUtils;
+import alternative_bots_1.utils.MovementUtils;
+import alternative_bots_1.utils.PaintEconomyUtils;
+import alternative_bots_1.utils.RuinUtils;
+import alternative_bots_1.utils.SoldierHeuristicUtils;
+import alternative_bots_1.utils.SpawnUtils;
 
 public class RobotPlayer {
     public static final Random rng = new Random(6147);

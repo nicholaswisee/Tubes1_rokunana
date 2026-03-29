@@ -37,9 +37,9 @@ Tubes1_rokunana
 ├───matches\
 ├───resource\
 ├───src\
-│   ├───mainbot
-│   ├───alternativebot1
-│   └───alternativebot2
+│   ├───main_bot\
+│   ├───alternative_bots_1\
+│   └───alternative_bots_2\
 ├───test\
 ├───.gitignore
 ├───build.gradle
